@@ -1,10 +1,8 @@
 
 #include "rcp.h"
-int sock;
-map<struct sockaddr_in*, int> clients;
-mutex clmtx;
 
-void conn_recv(struct sockaddr_in* client, int ttl){
+
+void rcp::conn_recv(struct sockaddr_in* client, int ttl){
 
     //critical section where we will be writing to map in conn_rev
     // and check_conn
@@ -15,7 +13,7 @@ void conn_recv(struct sockaddr_in* client, int ttl){
 }
 
 
-void conn_send(int sock, int wait, struct sockaddr_in addr){
+void rcp::conn_send(int sock, int wait, struct sockaddr_in addr){
     /**
      * @brief: continually pings server to let it know it is still 
      * alive and connected
@@ -36,7 +34,7 @@ void conn_send(int sock, int wait, struct sockaddr_in addr){
 
 
 
-void check_conn(int wait){
+void rcp::check_conn(int wait){
     for(;;){
         clmtx.lock();
         for(map<struct sockaddr_in*,int>::iterator iter = clients.begin(); iter != clients.end(); ++iter){
@@ -53,7 +51,7 @@ void check_conn(int wait){
 }
 
 
-void recv_msg (int sock, struct sockaddr_in this_addr){
+void rcp::recv_msg (int sock, struct sockaddr_in this_addr){
     struct sockaddr_in client;
     memset(&client,0,sizeof(client));
 
@@ -66,7 +64,7 @@ void recv_msg (int sock, struct sockaddr_in this_addr){
         cout<<(const char*)msg<<endl;
         if(!strcmp("syn",(const char*)msg)){//if strings are equal
             
-            thread conn_check(conn_recv,&client,5);
+            thread conn_check(&rcp::conn_recv,this,&client,5);
             conn_check.detach();
             
         }
@@ -74,7 +72,7 @@ void recv_msg (int sock, struct sockaddr_in this_addr){
 }
 
 
-void rcp_listen(int port, int block){
+void rcp::rcp_listen(int port, int block){
     
     struct sockaddr_in this_addr;
     memset(&this_addr,0,sizeof(this_addr));
@@ -82,10 +80,10 @@ void rcp_listen(int port, int block){
     this_addr.sin_port = htons(port);
     this_addr.sin_family = AF_INET;
 
-    thread ch_conn(check_conn,5);
+    thread ch_conn(&rcp::check_conn,this,5);
     ch_conn.detach();
 
-    thread recv_msg_thread(recv_msg,sock,this_addr);
+    thread recv_msg_thread(&rcp::recv_msg,this,sock,this_addr);
     if(block){
         recv_msg_thread.join();
     }else{
@@ -93,16 +91,16 @@ void rcp_listen(int port, int block){
     }
 }
 
-void init(){
+rcp::rcp(){
     sock = socket(AF_INET, SOCK_DGRAM,0);
 }
 
-void connect(const char* ip, int port, int block){
+void rcp::connect(const char* ip, int port, int block){
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
     addr.sin_addr.s_addr = inet_addr(ip);
-    thread conn_send_thread(conn_send,sock,1,addr);
+    thread conn_send_thread(&rcp::conn_send,this,sock,1,addr);
     if(block){
         conn_send_thread.join();    
     }else{

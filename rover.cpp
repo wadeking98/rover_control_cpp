@@ -1,6 +1,6 @@
 #include "rcp.h"
 
 int main(){
-    init();
-    rcp_listen(5555,true);
+    rcp rcp_conn;
+    rcp_conn.rcp_listen(5555,true);
 }
