@@ -2,3 +2,5 @@ rcppy.cpython*
 build/*
 rcppy.cpp
 *.o
+agent/controller
+agent/rover

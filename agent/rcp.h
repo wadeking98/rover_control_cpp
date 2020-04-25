@@ -9,6 +9,7 @@
 #include <thread>
 #include <iostream>
 #include <pthread.h>
+#include <mutex>
 #define BUFF_SIZE 1024
 #define PORT 5555
 #define PING_WAIT 1
@@ -29,15 +30,10 @@ class rcp{
     public:
         rcp();
         ~rcp();
-        void init();
-        void connect(const char*, int, int);
-        void rcp_listen(int, int);
+        void connect(const char*, int, bool);
+        void rcp_listen(int, bool);
 
 };
-
-
-
-
 
 #endif
 
