@@ -1,0 +1,4 @@
+*.cpython*
+build/*
+rcppy.cpp
+*.o
