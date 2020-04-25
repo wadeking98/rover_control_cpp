@@ -2,4 +2,4 @@ from setuptools import setup
 
 from Cython.Build import cythonize
 
-setup(ext_modules=cythonize("rcppy.pyx"))
+setup(ext_modules=cythonize("agent/rcppy.pyx"))

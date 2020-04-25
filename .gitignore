@@ -1,4 +1,4 @@
-*.cpython*
+rcppy.cpython*
 build/*
 rcppy.cpp
 *.o
