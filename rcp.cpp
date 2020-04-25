@@ -1,14 +1,13 @@
 
 #include "rcp.h"
 
-
 void rcp::conn_recv(struct sockaddr_in* client, int ttl){
 
     //critical section where we will be writing to map in conn_rev
     // and check_conn
-    clmtx.lock();
+    pthread_mutex_lock(&clmtx);
     clients[client] = ttl;
-    clmtx.unlock();
+    pthread_mutex_unlock(&clmtx);
 
 }
 
@@ -36,7 +35,7 @@ void rcp::conn_send(int sock, int wait, struct sockaddr_in addr){
 
 void rcp::check_conn(int wait){
     for(;;){
-        clmtx.lock();
+        pthread_mutex_lock(&clmtx);
         for(map<struct sockaddr_in*,int>::iterator iter = clients.begin(); iter != clients.end(); ++iter){
             struct sockaddr_in* cl = iter->first;
             clients[cl]--;
@@ -45,7 +44,7 @@ void rcp::check_conn(int wait){
                 clients.erase(cl);
             }
         }
-        clmtx.unlock();
+        pthread_mutex_unlock(&clmtx);
         sleep(wait);
     }
 }
@@ -60,7 +59,7 @@ void rcp::recv_msg (int sock, struct sockaddr_in this_addr){
     char msg[1024];
 
     for(;;){
-        int n = recvfrom(sock, msg,1024,MSG_CONFIRM,(struct sockaddr*)&client,(socklen_t*)sizeof(client));
+        recvfrom(sock, msg,1024,MSG_CONFIRM,(struct sockaddr*)&client,(socklen_t*)sizeof(client));
         cout<<(const char*)msg<<endl;
         if(!strcmp("syn",(const char*)msg)){//if strings are equal
             
@@ -91,7 +90,11 @@ void rcp::rcp_listen(int port, int block){
     }
 }
 
-rcp::rcp(){
+rcp::rcp(){}
+
+rcp::~rcp(){}
+
+void rcp::init(){
     sock = socket(AF_INET, SOCK_DGRAM,0);
 }
 
