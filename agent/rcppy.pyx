@@ -10,12 +10,15 @@ cdef class rcppy:
     def __cinit__(self):
         self.c_rcp = rcp()
 
-    def connect(self, ip, int port, bool block = False):
+    def connect(self, ip, port, block = False):
         self.c_rcp.connect(ip.encode(),port,block)
 
-    def serve(self,int port):
+    def serve(self, port):
         self.c_rcp.serve(port)
 
-    def listen(self,bool conn = False, bool block = False):
-        self.c_rcp.listen(conn, block)
+    def listen(self,buffsize, conn = False, block = False):
+        self.c_rcp.listen(buffsize,conn, block)
+
+    def send(self, msg, ip, port):
+        self.c_rcp.send(msg.encode(), ip, port)
 

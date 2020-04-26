@@ -13,7 +13,7 @@ int main(int argc, char** argv){
         exit(1);
     }
     rcp rcp_conn;
-    rcp_conn.listen(false, false);
+    rcp_conn.listen(1024, false, false);
     rcp_conn.connect(argv[1],5555, true);
     
 }

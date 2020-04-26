@@ -25,25 +25,27 @@ void rcp::conn_send(int sock, int wait, struct sockaddr_in addr){
      * @param addr: the socket address to send on
     */
     
-    const char* conn_msg = "syn";
     for(;;){
-        sendto(sock, conn_msg, sizeof(conn_msg),0,(struct sockaddr*)&addr,(socklen_t)sizeof(addr));
+        send(sock,"", addr, SYN);
         sleep(wait);
     }
 }
 
 
-void rcp::send(int sock, void* msg, struct sockaddr_in addr){
+void rcp::send(int sock, const char* msg, struct sockaddr_in addr, FLAG f){
     /**
      * @brief: private send method, sends a message to addr struct
      * @param sock: the socket handle to send on
      * @param msg: the content to send
      * @param addr: the sockaddr_in struct to send to
     */
-    sendto(sock, msg, sizeof(msg), 0, (struct sockaddr*)&addr,(socklen_t)sizeof(addr));
+    char msg_f[strlen(msg)+sizeof(f)];
+    msg_f[0] = f;
+    strcpy((msg_f+sizeof(f)),msg);
+    sendto(sock, msg_f, sizeof(msg_f), 0, (struct sockaddr*)&addr,(socklen_t)sizeof(addr));
 }
 
-void rcp::send(void* msg, const char* ip, int port){
+void rcp::send(const char* msg, const char* ip, int port, FLAG f = FLAG::DAT){
     /**
      * @brief: public send method, sends a message to specified ip, port
      * @param msg: the content to send
@@ -54,7 +56,7 @@ void rcp::send(void* msg, const char* ip, int port){
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
     addr.sin_addr.s_addr = inet_addr(ip);
-    send(sock,msg,addr);
+    send(sock,msg,addr,f);
 }
 
 
@@ -89,7 +91,7 @@ void rcp::check_conn(int wait){
 }
 
 
-void rcp::recv_msg (int sock, int buffsize = 1024, bool conn = false){
+void rcp::recv_msg (int sock, int buffsize, bool conn = false){
     /**
      * @brief: receives and handles any message sent from clients
      * @param sock: the socket handle to use
@@ -100,15 +102,19 @@ void rcp::recv_msg (int sock, int buffsize = 1024, bool conn = false){
 
 
     char msg[buffsize];
+    char msg_clean[buffsize];
+    FLAG f;
 
     for(;;){
         socklen_t len;
-        recvfrom(sock, msg,buffsize,MSG_WAITALL,(struct sockaddr*)&client,&len);
-        cout<<(const char*)msg<<endl;
-        if(!strcmp("syn",(const char*)msg) && conn){//if strings are equal and connections are accepted
+        int n = recvfrom(sock, msg,buffsize,MSG_WAITALL,(struct sockaddr*)&client,&len);
+        memcpy(&f,msg,sizeof(FLAG));
+        memcpy(msg_clean,(msg+sizeof(FLAG)), n);
+        cout<<(const char*)msg_clean<<endl;
+        if((f & SYN) && conn){//if SYN flag is set and connections are accepted
             thread conn_check(&rcp::conn_recv,this,&client,5);
             conn_check.detach();
-            send(sock,(void*)"ack",client);
+            send(sock,"test",client, DAT);
         }
     }
 }
@@ -132,7 +138,7 @@ void rcp::serve(int port){
     
 }
 
-void rcp::listen(bool conn = false, bool block = false){
+void rcp::listen(int buffsize, bool conn = false, bool block = false){
     /**
      * @brief: listen for incoming messages
      * @param conn: true to listen for connections
@@ -143,7 +149,7 @@ void rcp::listen(bool conn = false, bool block = false){
         ch_conn.detach();
     }
     
-    thread recv_msg_thread(&rcp::recv_msg,this,sock,conn);
+    thread recv_msg_thread(&rcp::recv_msg,this,sock,buffsize,conn);
     if(block){
         recv_msg_thread.join();
     }else{

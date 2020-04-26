@@ -7,4 +7,5 @@ cdef extern from "rcp.h":
         rcp() except +
         void connect(const char* ip, int port, bool block)
         void serve(int port)
-        void listen(bool conn, bool block)
+        void listen(int buffsize, bool conn, bool block)
+        void send(const char* msg, const char* ip, int port)
