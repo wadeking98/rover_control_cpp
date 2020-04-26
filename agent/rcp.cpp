@@ -33,6 +33,30 @@ void rcp::conn_send(int sock, int wait, struct sockaddr_in addr){
 }
 
 
+void rcp::send(int sock, void* msg, struct sockaddr_in addr){
+    /**
+     * @brief: private send method, sends a message to addr struct
+     * @param sock: the socket handle to send on
+     * @param msg: the content to send
+     * @param addr: the sockaddr_in struct to send to
+    */
+    sendto(sock, msg, sizeof(msg), 0, (struct sockaddr*)&addr,(socklen_t)sizeof(addr));
+}
+
+void rcp::send(void* msg, const char* ip, int port){
+    /**
+     * @brief: public send method, sends a message to specified ip, port
+     * @param msg: the content to send
+     * @param ip: the ip address to send to
+     * @param port: the port to send to
+    */
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+    addr.sin_addr.s_addr = inet_addr(ip);
+    send(sock,msg,addr);
+}
+
 
 
 
@@ -47,11 +71,11 @@ void rcp::check_conn(int wait){
     for(;;){
     
         pthread_mutex_lock(&clmtx);
-        for(map<struct sockaddr_in*,int>::iterator iter = clients.begin(); 
-        (iter != clients.end()) && (clients.size()>0); ++iter){
+        //iterate over map
+        map<struct sockaddr_in*,int>::iterator iter;
+        for( iter = clients.begin(); (iter != clients.end()) && (clients.size()>0); ++iter){
             
             struct sockaddr_in* cl = iter->first;
-            cout<<clients.size()<<endl;
             clients[cl]--;
             //client inactive, remove from list
             if(clients[cl] <= 0){
@@ -65,38 +89,36 @@ void rcp::check_conn(int wait){
 }
 
 
-void rcp::recv_msg (int sock, struct sockaddr_in this_addr){
+void rcp::recv_msg (int sock, int buffsize = 1024, bool conn = false){
     /**
      * @brief: receives and handles any message sent from clients
      * @param sock: the socket handle to use
-     * @param this_addr: the address struct of this machine
+     * @param conn: true if connections are to be accepted
     */
     struct sockaddr_in client;
     memset(&client,0,sizeof(client));
 
 
-    bind(sock,(struct sockaddr*)&this_addr, sizeof(this_addr));
-    char msg[1024];
+    char msg[buffsize];
 
     for(;;){
-        recvfrom(sock, msg,1024,MSG_CONFIRM,(struct sockaddr*)&client,(socklen_t*)sizeof(client));
+        socklen_t len;
+        recvfrom(sock, msg,buffsize,MSG_WAITALL,(struct sockaddr*)&client,&len);
         cout<<(const char*)msg<<endl;
-        if(!strcmp("syn",(const char*)msg)){//if strings are equal
-            
+        if(!strcmp("syn",(const char*)msg) && conn){//if strings are equal and connections are accepted
             thread conn_check(&rcp::conn_recv,this,&client,5);
             conn_check.detach();
-            
+            send(sock,(void*)"ack",client);
         }
     }
 }
 
 
-void rcp::rcp_listen(int port, bool block = 0){
+void rcp::serve(int port){
     /**
      * @brief: binds to this machine address and sets up
      * reception of client messages
      * @param port: the port to listen on
-     * @param block: True for blocking, False for asychronous mode
     */
     
     struct sockaddr_in this_addr;
@@ -105,10 +127,23 @@ void rcp::rcp_listen(int port, bool block = 0){
     this_addr.sin_port = htons(port);
     this_addr.sin_family = AF_INET;
 
-    thread ch_conn(&rcp::check_conn,this,1);
-    ch_conn.detach();
+    bind(sock,(struct sockaddr*)&this_addr, sizeof(this_addr));
 
-    thread recv_msg_thread(&rcp::recv_msg,this,sock,this_addr);
+    
+}
+
+void rcp::listen(bool conn = false, bool block = false){
+    /**
+     * @brief: listen for incoming messages
+     * @param conn: true to listen for connections
+     * @param block: true from blocking mode, false for asych mode
+    */
+    if(conn){//if connections are accepted
+        thread ch_conn(&rcp::check_conn,this,1);
+        ch_conn.detach();
+    }
+    
+    thread recv_msg_thread(&rcp::recv_msg,this,sock,conn);
     if(block){
         recv_msg_thread.join();
     }else{

@@ -10,7 +10,10 @@
 int main(int argc, char** argv){
     if(argc < 2){
         printf("Usage: bash controller <rover_ip>");
+        exit(1);
     }
     rcp rcp_conn;
+    rcp_conn.listen(false, false);
     rcp_conn.connect(argv[1],5555, true);
+    
 }

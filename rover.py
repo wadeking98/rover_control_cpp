@@ -1,5 +1,6 @@
 import rcppy
-agent = rcppy.PyRCP()
-agent.listen(5555,False)
+agent = rcppy.rcppy()
+agent.serve(5555)
+agent.listen(True,False)
 while True:
     pass

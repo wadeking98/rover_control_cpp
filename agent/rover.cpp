@@ -2,5 +2,6 @@
 
 int main(){
     rcp rcp_conn;
-    rcp_conn.rcp_listen(5555,true);
+    rcp_conn.serve(5555);
+    rcp_conn.listen(true, true);
 }

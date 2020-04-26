@@ -1,6 +1,6 @@
-rcppy.cpython*
 build/*
 rcppy.cpp
 *.o
+*.so
 agent/controller
 agent/rover

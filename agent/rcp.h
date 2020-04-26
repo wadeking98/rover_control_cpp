@@ -20,18 +20,23 @@ class rcp{
     private:
         int sock;
         map<struct sockaddr_in*, int> clients;
-        
+        void* buff;
         pthread_mutex_t clmtx;
         void conn_recv(struct sockaddr_in*, int);
-        void recv_msg(int, struct sockaddr_in);
+        void recv_msg(int, int, bool);
         void check_conn(int);
         void conn_send(int, int, struct sockaddr_in);
+        void send(int, void* , struct sockaddr_in);
+        
         
     public:
         rcp();
         ~rcp();
         void connect(const char*, int, bool);
-        void rcp_listen(int, bool);
+        void serve(int);
+        void listen(bool, bool);
+        void send(void*, const char*, int);
+        
 
 };
 
