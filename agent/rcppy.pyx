@@ -19,6 +19,10 @@ cdef class rcppy:
     def listen(self,buffsize, conn = False, block = False):
         self.c_rcp.listen(buffsize,conn, block)
 
-    def send(self, msg, ip, port):
-        self.c_rcp.send(msg.encode(), ip, port)
+    def send(self,msg,ip, port):
+        self.c_rcp.send(msg, ip.encode(), port)
+    
+    def read(self):
+        return self.c_rcp.read()
+        
 

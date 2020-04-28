@@ -24,7 +24,7 @@ class rcp{
     private:
         int sock;
         map<struct sockaddr_in*, int> clients;
-        void* buff;
+        char* buff;
         pthread_mutex_t clmtx;
         void conn_recv(struct sockaddr_in*, int);
         void recv_msg(int, int, bool);
@@ -39,7 +39,8 @@ class rcp{
         void connect(const char*, int, bool);
         void serve(int);
         void listen(int,bool, bool);
-        void send(const char*, const char*, int, FLAG);
+        void send(const char*, const char*, int);
+        char* read();
         
 
 };

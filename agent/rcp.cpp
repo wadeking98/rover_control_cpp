@@ -32,20 +32,26 @@ void rcp::conn_send(int sock, int wait, struct sockaddr_in addr){
 }
 
 
-void rcp::send(int sock, const char* msg, struct sockaddr_in addr, FLAG f){
+void rcp::send(int sock, const  char* msg, struct sockaddr_in addr, FLAG f){
     /**
      * @brief: private send method, sends a message to addr struct
      * @param sock: the socket handle to send on
      * @param msg: the content to send
      * @param addr: the sockaddr_in struct to send to
+     * @param f: the flag for the type of message
     */
-    char msg_f[strlen(msg)+sizeof(f)];
-    msg_f[0] = f;
-    strcpy((msg_f+sizeof(f)),msg);
+    char msg_f[sizeof(msg)+sizeof(f)+1];
+    int8_t offset = sizeof(f)+sizeof(int8_t);
+    msg_f[0] = (char)(offset);
+    //first byte is offset
+    memcpy(msg_f, &offset, sizeof(offset));
+    //second 4 bytes is flags
+    memcpy((msg_f+sizeof(int8_t)), &f, sizeof(f));
+    strcpy((msg_f+offset),msg);
     sendto(sock, msg_f, sizeof(msg_f), 0, (struct sockaddr*)&addr,(socklen_t)sizeof(addr));
 }
 
-void rcp::send(const char* msg, const char* ip, int port, FLAG f = FLAG::DAT){
+void rcp::send(const char* msg, const char* ip, int port){
     /**
      * @brief: public send method, sends a message to specified ip, port
      * @param msg: the content to send
@@ -56,7 +62,8 @@ void rcp::send(const char* msg, const char* ip, int port, FLAG f = FLAG::DAT){
     addr.sin_family = AF_INET;
     addr.sin_port = htons(port);
     addr.sin_addr.s_addr = inet_addr(ip);
-    send(sock,msg,addr,f);
+    //we wont let users set flags
+    send(sock,msg,addr,DAT);
 }
 
 
@@ -71,21 +78,20 @@ void rcp::check_conn(int wait){
      * over client list.
     */
     for(;;){
-    
-        pthread_mutex_lock(&clmtx);
         //iterate over map
         map<struct sockaddr_in*,int>::iterator iter;
         for( iter = clients.begin(); (iter != clients.end()) && (clients.size()>0); ++iter){
-            
             struct sockaddr_in* cl = iter->first;
+            //lock critical section
+            pthread_mutex_lock(&clmtx);
             clients[cl]--;
             //client inactive, remove from list
             if(clients[cl] <= 0){
                 clients.erase(cl);
                 cout<<"client disconnect"<<endl;
             }
+            pthread_mutex_unlock(&clmtx);
         }
-        pthread_mutex_unlock(&clmtx);
         sleep(wait);
     }
 }
@@ -102,21 +108,38 @@ void rcp::recv_msg (int sock, int buffsize, bool conn = false){
 
 
     char msg[buffsize];
-    char msg_clean[buffsize];
     FLAG f;
+    int8_t offset;
 
     for(;;){
         socklen_t len;
         int n = recvfrom(sock, msg,buffsize,MSG_WAITALL,(struct sockaddr*)&client,&len);
-        memcpy(&f,msg,sizeof(FLAG));
-        memcpy(msg_clean,(msg+sizeof(FLAG)), n);
-        cout<<(const char*)msg_clean<<endl;
+        //1st byte is offset
+        memcpy(&offset,msg,sizeof(int8_t));
+        //next is flags
+        memcpy(&f,(msg+sizeof(int8_t)),sizeof(FLAG));
+
+
         if((f & SYN) && conn){//if SYN flag is set and connections are accepted
             thread conn_check(&rcp::conn_recv,this,&client,5);
             conn_check.detach();
-            send(sock,"test",client, DAT);
+        }
+        if(f & DAT){
+            //read message content from offset to the end of the recieved message
+            memcpy(buff,msg+offset, n-offset);
         }
     }
+}
+
+
+char* rcp::read(){
+    /**
+     * @return copy of message buffer
+    */
+    cout<<sizeof(buff)<<endl;
+    char * buff_cpy = (char*)malloc(BUFF_SIZE);
+    memcpy(buff_cpy,buff,BUFF_SIZE);
+    return buff_cpy;
 }
 
 
@@ -159,6 +182,8 @@ void rcp::listen(int buffsize, bool conn = false, bool block = false){
 
 rcp::rcp(){
     sock = socket(AF_INET, SOCK_DGRAM,0);
+    char b[BUFF_SIZE];
+    buff = b;
 }
 
 rcp::~rcp(){}

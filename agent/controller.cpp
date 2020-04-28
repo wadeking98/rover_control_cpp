@@ -14,6 +14,11 @@ int main(int argc, char** argv){
     }
     rcp rcp_conn;
     rcp_conn.listen(1024, false, false);
-    rcp_conn.connect(argv[1],5555, true);
+    rcp_conn.connect(argv[1],5555, false);
+
+    for(;;){
+        sleep(1);
+        rcp_conn.send("qwerty", argv[1], 5555);
+    }
     
 }
